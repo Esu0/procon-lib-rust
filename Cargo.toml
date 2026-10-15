@@ -1,0 +1,6 @@
+[workspace]
+resolver = "3"
+members = ["segtree"]
+
+[workspace.package]
+edition = "2024"
