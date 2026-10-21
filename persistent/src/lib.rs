@@ -1,7 +1,7 @@
-pub mod memory;
-pub mod stack;
-pub mod queue;
 mod lazy;
+pub mod memory;
+pub mod queue;
+pub mod stack;
 
 use core::ptr::NonNull;
 
@@ -28,14 +28,15 @@ pub trait Allocator<'a> {
 
 trait AllocatorExt<'a>: Allocator<'a> {
     fn get_ref<T>(&self, value: T) -> &'a T {
-        self.alloc_imm(value).unwrap_or_else(|| panic!("allocation failed"))
+        self.alloc_imm(value)
+            .unwrap_or_else(|| panic!("allocation failed"))
     }
 }
 
 impl<'a, A: Allocator<'a>> AllocatorExt<'a> for A {}
 
 #[derive(Debug)]
-enum List<'a, T>{
+enum List<'a, T> {
     Nil,
     Cons(&'a (T, List<'a, T>)),
 }
@@ -64,7 +65,7 @@ impl<'a, T: Clone> List<'a, T> {
         // TODO: no recursion implementation
         match self {
             Nil => other,
-            Cons((h, t)) => Cons(alloc.get_ref((h.clone(), t.concat(alloc, other))))
+            Cons((h, t)) => Cons(alloc.get_ref((h.clone(), t.concat(alloc, other)))),
         }
     }
 

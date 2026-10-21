@@ -1,6 +1,6 @@
-use std::{alloc::Layout, cell::Cell, ptr::NonNull};
 use super::Allocator;
 use std::alloc;
+use std::{alloc::Layout, cell::Cell, ptr::NonNull};
 
 pub struct ThreadMemPool {
     list: Cell<Option<NonNull<Node>>>,
