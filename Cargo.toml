@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["segtree"]
+members = [ "persistent","segtree"]
 
 [workspace.package]
 edition = "2024"
