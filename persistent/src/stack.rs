@@ -1,12 +1,5 @@
-use std::marker::PhantomData;
-
-use super::Allocator;
-
-#[derive(Debug)]
-struct Node<'a, T: Copy> {
-    head: T,
-    tail: Option<&'a Node<'a, T>>,
-}
+use super::List;
+use super::{Allocator, AllocatorExt};
 
 #[derive(Clone, Copy, Debug)]
 pub struct PersistentStack<'a, T: Copy, A: Allocator<'a>> {
@@ -15,18 +8,7 @@ pub struct PersistentStack<'a, T: Copy, A: Allocator<'a>> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Unmanaged<'a, T: Copy> {
-    node_ref: Option<&'a Node<'a, T>>,
-    _marker: PhantomData<fn (&'a ()) -> &'a ()>,
-}
-
-impl<'a, T: Copy> Clone for Node<'a, T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<'a, T: Copy> Copy for Node<'a, T> {}
+pub struct Unmanaged<'a, T: Copy>(List<'a, T>);
 
 impl<'a, T: Copy> Default for Unmanaged<'a, T> {
     fn default() -> Self {
@@ -67,37 +49,28 @@ impl<'a, T: Copy, A: Allocator<'a> + Clone> PersistentStack<'a, T, A> {
     }
 }
 
-fn new_node<'a, T: Copy, A: Allocator<'a>>(alloc: &A, head: T, tail: Option<&'a Node<'a, T>>) -> &'a Node<'a, T> {
-    alloc.alloc_imm(Node { head, tail }).unwrap_or_else(|| panic!("allocation failed"))
-}
-
 impl<'a, T: Copy> Unmanaged<'a, T> {
     pub const fn new() -> Self {
-        Self::from_node_ref(None)
-    }
-
-    const fn from_node_ref(node_ref: Option<&'a Node<'a, T>>) -> Self {
-        Self {
-            node_ref,
-            _marker: PhantomData,
-        }
+        Self(List::Nil)
     }
 
     pub fn push<A: Allocator<'a>>(self, alloc: &A, value: T) -> Self {
-        Self::from_node_ref(Some(new_node(alloc, value, self.node_ref)))
+        Self(List::Cons(alloc.get_ref((value, self.0))))
     }
 
     pub fn pop(self) -> Option<(T, Self)> {
-        let node = self.node_ref?;
-        Some((node.head, Self::from_node_ref(node.tail)))
+        match self.0 {
+            List::Nil => None,
+            List::Cons(&(h, t)) => Some((h, Self(t))),
+        }
     }
 
     pub fn peek(self) -> Option<T> {
-        self.node_ref.map(|n| n.head)
+        self.0.as_option().map(|&(h, _)| h)
     }
 
     pub const fn is_empty(self) -> bool {
-        self.node_ref.is_some()
+        self.0.is_empty()
     }
 
     pub const fn with_alloc<A: Allocator<'a>>(self, alloc: A) -> PersistentStack<'a, T, A> {

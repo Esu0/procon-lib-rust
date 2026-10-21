@@ -1,7 +1,8 @@
 pub mod memory;
 pub mod stack;
+pub mod queue;
 
-use core::{cell::Cell, ptr::NonNull};
+use core::ptr::NonNull;
 
 pub trait Allocator<'a> {
     ///
@@ -22,12 +23,58 @@ pub trait Allocator<'a> {
             Some(&*ptr.as_ptr())
         }
     }
+}
 
-    fn alloc_inner_mut<T>(&self, value: T) -> Option<&'a Cell<T>> {
-        unsafe {
-            let ptr = self.alloc::<T>()?;
-            ptr.write(value);
-            Some(&*ptr.cast::<Cell<T>>().as_ptr())
+trait AllocatorExt<'a>: Allocator<'a> {
+    fn get_ref<T>(&self, value: T) -> &'a T {
+        self.alloc_imm(value).unwrap_or_else(|| panic!("allocation failed"))
+    }
+}
+
+impl<'a, A: Allocator<'a>> AllocatorExt<'a> for A {}
+
+#[derive(Debug)]
+enum List<'a, T>{
+    Nil,
+    Cons(&'a (T, List<'a, T>)),
+}
+
+impl<'a, T> Clone for List<'a, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a, T> Copy for List<'a, T> {}
+
+impl<'a, T: Clone> List<'a, T> {
+    fn rev<A: Allocator<'a>>(self, alloc: &A) -> Self {
+        let mut list = Self::Nil;
+        let mut cur = self;
+        while let Self::Cons((h, t)) = cur {
+            list = Self::Cons(alloc.get_ref((h.clone(), list)));
+            cur = *t;
         }
+        list
+    }
+
+    fn concat<A: Allocator<'a>>(self, alloc: &A, other: Self) -> Self {
+        use List::*;
+        // TODO: no recursion implementation
+        match self {
+            Nil => other,
+            Cons((h, t)) => Cons(alloc.get_ref((h.clone(), t.concat(alloc, other))))
+        }
+    }
+
+    const fn as_option(self) -> Option<&'a (T, List<'a, T>)> {
+        match self {
+            Self::Nil => None,
+            Self::Cons(ht) => Some(ht),
+        }
+    }
+
+    const fn is_empty(self) -> bool {
+        matches!(self, Self::Cons(_))
     }
 }
