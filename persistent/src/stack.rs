@@ -25,11 +25,15 @@ impl<'a, T: Copy, A: Allocator<'a> + Clone> PersistentStack<'a, T, A> {
     }
 
     pub fn push(&self, value: T) -> Self {
-        self.unmanaged.push(&self.alloc, value).with_alloc(self.alloc.clone())
+        self.unmanaged
+            .push(&self.alloc, value)
+            .with_alloc(self.alloc.clone())
     }
 
     pub fn pop(&self) -> Option<(T, Self)> {
-        self.unmanaged.pop().map(|(v, s)| (v, s.with_alloc(self.alloc.clone())))
+        self.unmanaged
+            .pop()
+            .map(|(v, s)| (v, s.with_alloc(self.alloc.clone())))
     }
 
     pub fn peek(&self) -> Option<T> {
@@ -74,7 +78,10 @@ impl<'a, T: Copy> Unmanaged<'a, T> {
     }
 
     pub const fn with_alloc<A: Allocator<'a>>(self, alloc: A) -> PersistentStack<'a, T, A> {
-        PersistentStack { alloc, unmanaged: self }
+        PersistentStack {
+            alloc,
+            unmanaged: self,
+        }
     }
 }
 
@@ -113,7 +120,13 @@ mod tests {
         for i in 0..100 {
             let j = rng.random_range(0..=i);
             stacks.push(stacks[j].push(i));
-            expected.push(expected[j].iter().copied().chain(std::iter::once(i)).collect());
+            expected.push(
+                expected[j]
+                    .iter()
+                    .copied()
+                    .chain(std::iter::once(i))
+                    .collect(),
+            );
         }
 
         for (expected, &stack) in expected.iter().zip(&stacks) {
