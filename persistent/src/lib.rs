@@ -1,6 +1,7 @@
 pub mod memory;
 pub mod stack;
 pub mod queue;
+mod lazy;
 
 use core::ptr::NonNull;
 
